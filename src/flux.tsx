@@ -4,6 +4,7 @@ import { promisify } from "util";
 import { createHash } from "crypto";
 import { homedir } from "os";
 import { join } from "path";
+import { readdirSync } from "fs";
 
 const execAsync = promisify(exec);
 
@@ -43,12 +44,18 @@ function generateOutputPath(prompt: string, model: string, steps?: string, seed?
         timestamp
     ].filter(Boolean).join('-') + '.png';
 
-    // 返回完整路径（保存在用户目录的 Pictures/Diffusion/mflux 文件夹下）
+    // 返回完整路径（默认保存在用户目录的 Pictures/Diffusion/mflux 文件夹下）
     if (preferences.savePath) {
         return join(preferences.savePath, fileName);
     } else {
         return join(homedir(), 'Pictures', 'Diffusion', 'mflux', fileName);
     }
+}
+// 自动获取snapshots文件夹下面的第一个文件夹
+function getLatestSnapshot(model_folder: string) {
+    const snapshotsDir = join(homedir(), '.cache', 'huggingface', 'hub', model_folder, 'snapshots');
+    const snapshots = readdirSync(snapshotsDir);
+    return join(snapshotsDir, snapshots[0]);
 }
 
 export default function Command() {
@@ -59,14 +66,13 @@ export default function Command() {
             const width = values.width || "1024";
             const height = values.height || "1024";
             const seedParam = values.seed ? `--seed ${values.seed}` : "";
-            const hubPath = `${homedir()}/.cache/huggingface/hub/`;
             let pathParam = "";
             if (values.model === "shuttle") {
-                pathParam = `--path ${hubPath}models--shuttleai--shuttle-3-diffusion/snapshots/0e3400097d2a47041592d764e81491ca44f474c3/`;
+                pathParam = `--path ${getLatestSnapshot("models--shuttleai--shuttle-3-diffusion")}`;
             } else if (values.model === "schnell") {
-                pathParam = `--path ${hubPath}models--black-forest-labs--FLUX.1-schnell/snapshots/741f7c3ce8b383c54771c7003378a50191e9efe9/`;
+                pathParam = `--path ${getLatestSnapshot("models--black-forest-labs--FLUX.1-schnell")}`;
             } else if (values.model === "dev") {
-                pathParam = `--path ${hubPath}models--black-forest-labs--FLUX.1-dev/snapshots/0ef5fff789c832c5c7f4e127f94c8b54bbcced44/`;
+                pathParam = `--path ${getLatestSnapshot("models--black-forest-labs--FLUX.1-dev")}`;
             }
             let stepsParam = values.steps ? `--steps ${values.steps}` : "";
 
